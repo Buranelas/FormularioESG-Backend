@@ -5,15 +5,35 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 const app = express();
+
+// Endereços URL liberados para o Backend Acessar
+const allowedOrigins = [
+  'http://localhost:3000'
+];
+
+// Middleware CORS atualizado
 app.use(cors({
-  origin: 'http://192.168.111.95:3000',
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Permitir métodos HTTP
+  allowedHeaders: ['Content-Type', 'Authorization'], // Permitir cabeçalhos customizados
+  credentials: true // Se precisar de cookies ou autenticação via credenciais
 }));
+
+// Garantir que OPTIONS requests sejam respondidas corretamente
+app.options('*', cors()); 
+
 app.use(express.json());
 
 // Conectar ao MongoDB
-mongoose.connect('mongodb://192.168.111.95:27017/formulario', {
+  mongoose.connect('SEU_ENDEREÇO_IP_DO_BANCO_DE_DADOS', {
   useNewUrlParser: true,
-  useUnifiedTopology: true,
+  useUnifiedTopology: true, // Certifique-se de indicar o banco de autenticação correto (geralmente 'admin')
 });
 
 // Função para validar se as respostas são números entre 1 e 10
@@ -67,7 +87,11 @@ function calcularPosicaoMaisSelecionada(todasRespostas, tema, numeroDePerguntas)
   });
 
   return contagem.map(pergunta => {
-    return parseInt(Object.keys(pergunta).reduce((a, b) => pergunta[a] > pergunta[b] ? a : b), 10);
+    // Se Object.keys(pergunta) estiver vazio, retornar 0 como valor padrão
+    const chaves = Object.keys(pergunta);
+    if (chaves.length === 0) return null; // Ou outro valor padrão adequado
+
+    return parseInt(chaves.reduce((a, b) => pergunta[a] > pergunta[b] ? a : b, chaves[0]), 10);
   });
 }
 
@@ -101,9 +125,12 @@ app.post('/api/respostas', async (req, res) => {
 
     res.status(201).send('Respostas salvas com sucesso!');
   } catch (error) {
+    // Adiciona um log detalhado do erro
+    console.error('Erro ao salvar respostas:', error);
     res.status(500).send('Erro ao salvar respostas');
   }
 });
+
 
 // Rota para calcular a média das respostas
 app.get('/api/medias', async (req, res) => {
@@ -118,8 +145,8 @@ app.get('/api/medias', async (req, res) => {
   }
 });
 
-// Iniciar o servidor na porta 5000
-const PORT = process.env.PORT || 5000;
+// Iniciar o servidor na porta 5051
+const PORT = process.env.PORT || 5051;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
